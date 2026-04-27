@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>날씨 감정 유튜브 노래 추천기</title>
+  <style>
+    :root {
+      --bg-a: #f2f8ff;
+      --bg-b: #e8ffe8;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --card: #ffffff;
+      --accent: #0f766e;
+      --link: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 10%, #fff8e7 0%, transparent 40%),
+        radial-gradient(circle at 90% 20%, #e5f3ff 0%, transparent 45%),
+        linear-gradient(135deg, var(--bg-a) 0%, var(--bg-b) 100%);
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 16px 48px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.2;
+    }
+    p { margin: 0; color: var(--muted); }
+    .panel {
+      margin-top: 22px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 12px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+    }
+    textarea { min-height: 88px; resize: vertical; }
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font: inherit;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .next-link {
+      display: inline-block;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #fff;
+      background: #1d4ed8;
+      text-decoration: none;
+    }
+    #status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+    .results {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+    .song {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .meta { color: #475569; font-size: 14px; }
+    .tag {
+      display: inline-block;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: #334155;
+      background: #f8fafc;
+      width: fit-content;
+    }
+    a { color: var(--link); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>날씨 + 감정 노래 추천기</h1>
+    <p>오늘의 날씨와 감정을 입력하면 분위기를 유지하면서도 매번 조금씩 다른 10곡을 추천합니다.</p>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label for="weather">오늘의 날씨</label>
+          <input id="weather" placeholder="예: 비, 맑음, 흐림, 눈">
+        </div>
+        <div>
+          <label for="emotion">오늘의 감정</label>
+          <input id="emotion" placeholder="예: 신남, 차분함, 우울함">
+        </div>
+      </div>
+
+      <label for="note" style="margin-top:12px;">추가 메모 (선택)</label>
+      <textarea id="note" placeholder="예: 일할 때 들을 집중용 음악이 필요해요"></textarea>
+
+      <div class="actions">
+        <button id="searchBtn">10곡 추천받기</button>
+        <a class="next-link" href="./quiz.html">다음 페이지: 장르별 노래 맞추기</a>
+      </div>
+      <div id="status"></div>
+    </section>
+
+    <section id="results" class="results" aria-live="polite"></section>
+  </main>
+
+  <script>
+    const RECENT_KEY = "mood_recent_song_keys_v1";
+
+    const genreSongs = {
+      "acoustic pop": [
+        ["Jason Mraz", "I'm Yours"], ["Sara Bareilles", "Love Song"], ["Vance Joy", "Riptide"],
+        ["Colbie Caillat", "Bubbly"], ["Ed Sheeran", "Photograph"], ["Jack Johnson", "Better Together"],
+        ["Bruno Major", "Easily"], ["Ben Rector", "Brand New"], ["Train", "Hey Soul Sister"], ["John Mayer", "New Light"]
+      ],
+      "lofi chill rnb": [
+        ["Keshi", "2 soon"], ["Joji", "Sanctuary"], ["NIKI", "lowkey"], ["BIBI", "The Weekend"],
+        ["Crush", "Sometimes"], ["DPR IAN", "Nerves"], ["Sam Kim", "Make Up"], ["Heize", "HAPPEN"],
+        ["Dean", "instagram"], ["Colde", "Control Me"]
+      ],
+      "piano ballad": [
+        ["Adele", "Someone Like You"], ["Yiruma", "River Flows in You"], ["Sam Smith", "Stay With Me"],
+        ["John Legend", "All of Me"], ["IU", "Love poem"], ["Baekhyun", "Bambi"], ["Paul Kim", "Me After You"],
+        ["BTS", "The Truth Untold"], ["Lewis Capaldi", "Before You Go"], ["Christina Perri", "A Thousand Years"]
+      ],
+      "indie folk": [
+        ["The Lumineers", "Ho Hey"], ["Mumford & Sons", "I Will Wait"], ["Of Monsters and Men", "Little Talks"],
+        ["Bon Iver", "Holocene"], ["Novo Amor", "Anchor"], ["The Paper Kites", "Bloom"],
+        ["Sufjan Stevens", "Mystery of Love"], ["Passenger", "Let Her Go"], ["Hozier", "Cherry Wine"], ["Fleet Foxes", "Blue Ridge Mountains"]
+      ],
+      "dream pop": [
+        ["Cigarettes After Sex", "Apocalypse"], ["Beach House", "Space Song"], ["M83", "Midnight City"],
+        ["Men I Trust", "Show Me How"], ["Alvvays", "Dreams Tonite"], ["The 1975", "Somebody Else"],
+        ["LANY", "Malibu Nights"], ["Daughter", "Youth"], ["AURORA", "Runaway"], ["Cocteau Twins", "Heaven or Las Vegas"]
+      ],
+      "dance pop": [
+        ["Dua Lipa", "Levitating"], ["The Weeknd", "Blinding Lights"], ["Charlie Puth", "Light Switch"],
+        ["Doja Cat", "Say So"], ["BTS", "Dynamite"], ["NewJeans", "Super Shy"], ["IVE", "I AM"],
+        ["BLACKPINK", "How You Like That"], ["Lady Gaga", "Rain On Me"], ["Tinashe", "Nasty"]
+      ],
+      "jazz soul": [
+        ["Amy Winehouse", "Back To Black"], ["Norah Jones", "Don't Know Why"], ["Samara Joy", "Can't Get Out of This Mood"],
+        ["Laufey", "From The Start"], ["Daniel Caesar", "Best Part"], ["H.E.R.", "Focus"],
+        ["Sade", "Smooth Operator"], ["John Coltrane", "Naima"], ["Nina Simone", "Feeling Good"], ["Gregory Porter", "Liquid Spirit"]
+      ],
+      "kpop dance": [
+        ["SEVENTEEN", "Super"], ["Stray Kids", "MANIAC"], ["LE SSERAFIM", "ANTIFRAGILE"], ["aespa", "Drama"],
+        ["NCT 127", "Fact Check"], ["ITZY", "WANNABE"], ["TWICE", "FANCY"], ["EXO", "Love Shot"], ["ATEEZ", "BOUNCY"], ["Red Velvet", "Bad Boy"]
+      ],
+      "emotional ballad": [
+        ["Taeyeon", "Fine"], ["IU", "Through the Night"], ["Ben", "180 Degree"], ["Davichi", "This Love"],
+        ["Jung Seung Hwan", "If It Is You"], ["Lee Hi", "Breathe"], ["AKMU", "How can I love the heartbreak"],
+        ["Younha", "Event Horizon"], ["Big Mama", "Resignation"], ["Lim Jae Hyun", "If there was practice in love"]
+      ],
+      "rock alternative": [
+        ["Linkin Park", "Numb"], ["Imagine Dragons", "Believer"], ["Fall Out Boy", "Centuries"], ["Paramore", "Misery Business"],
+        ["My Chemical Romance", "Welcome to the Black Parade"], ["Royal Blood", "Figure It Out"], ["Muse", "Uprising"],
+        ["Arctic Monkeys", "Do I Wanna Know?"], ["Green Day", "Boulevard of Broken Dreams"], ["X Ambassadors", "Renegades"]
+      ],
+      "ambient chill": [
+        ["Tycho", "Awake"], ["ODESZA", "A Moment Apart"], ["Brian Eno", "An Ending"], ["Marconi Union", "Weightless"],
+        ["FKJ", "Ylang Ylang"], ["Khruangbin", "Friday Morning"], ["Jinsang", "Affection"], ["idealism", "both of us"],
+        ["Nujabes", "Aruarian Dance"], ["Tom Misch", "Movie"]
+      ],
+      "lofi beats": [
+        ["J Dilla", "Time The Donut of the Heart"], ["Nujabes", "Luv Sic Part 3"], ["j'san", "alone by your side"],
+        ["potsu", "just friends"], ["Kudasai", "technicolor"], ["Birocratic", "Sleepyface"],
+        ["SwuM", "Lush"], ["Aso", "Seasons"], ["Elijah Who", "Rainy Day"], ["Idealism", "Snowfall"]
+      ],
+      "retro city pop": [
+        ["Mariya Takeuchi", "Plastic Love"], ["Anri", "Remember Summer Days"], ["Miki Matsubara", "Stay With Me"],
+        ["Tatsuro Yamashita", "Sparkle"], ["Yukika", "Soul Lady"], ["Yubin", "Lady"],
+        ["Bronze", "Orange Road"], ["Night Tempo", "Cherry Blossom"], ["Daoko", "Uchiage Hanabi"], ["Lamp", "For Lovers"]
+      ],
+      "healing piano": [
+        ["Yiruma", "Kiss the Rain"], ["Ludovico Einaudi", "Nuvole Bianche"], ["Max Richter", "On the Nature of Daylight"],
+        ["Hania Rani", "Glass"], ["George Winston", "Longing Love"], ["Yann Tiersen", "Comptine d'un autre ete"],
+        ["Ryuichi Sakamoto", "Merry Christmas Mr Lawrence"], ["Joe Hisaishi", "One Summer's Day"],
+        ["Dustin O'Halloran", "We Move Lightly"], ["Nils Frahm", "Says"]
+      ]
+    };
+
+    const weatherGenreMap = [
+      { re: /(sun|clear|bright|hot|summer|맑|화창|더움|폭염|여름)/i, genre: "dance pop" },
+      { re: /(rain|storm|wet|drizzle|비|장마|소나기)/i, genre: "lofi chill rnb" },
+      { re: /(snow|winter|cold|freez|눈|겨울|추움|한파)/i, genre: "healing piano" },
+      { re: /(cloud|fog|overcast|흐림|구름|안개)/i, genre: "indie folk" },
+      { re: /(wind|breeze|바람)/i, genre: "dream pop" }
+    ];
+
+    const emotionGenreMap = [
+      { re: /(happy|excited|up|party|행복|신남|들뜸|기쁨)/i, genre: "kpop dance" },
+      { re: /(sad|down|blue|lonely|슬픔|우울|외로움)/i, genre: "emotional ballad" },
+      { re: /(angry|mad|rage|화남|짜증|분노)/i, genre: "rock alternative" },
+      { re: /(calm|peace|relax|quiet|차분|평온|편안)/i, genre: "ambient chill" },
+      { re: /(focus|study|work|deep|집중|공부|업무|일)/i, genre: "lofi beats" },
+      { re: /(nostalgia|retro|old|그리움|레트로|추억)/i, genre: "retro city pop" },
+      { re: /(anxious|stress|tired|불안|스트레스|피곤)/i, genre: "jazz soul" }
+    ];
+
+    const genreNeighbors = {
+      "acoustic pop": ["indie folk", "ambient chill"],
+      "lofi chill rnb": ["lofi beats", "ambient chill", "jazz soul"],
+      "piano ballad": ["healing piano", "emotional ballad"],
+      "indie folk": ["acoustic pop", "dream pop"],
+      "dream pop": ["indie folk", "ambient chill"],
+      "dance pop": ["kpop dance", "acoustic pop"],
+      "jazz soul": ["ambient chill", "lofi chill rnb"],
+      "kpop dance": ["dance pop", "retro city pop"],
+      "emotional ballad": ["piano ballad", "healing piano"],
+      "rock alternative": ["kpop dance", "indie folk"],
+      "ambient chill": ["lofi beats", "dream pop", "jazz soul"],
+      "lofi beats": ["ambient chill", "lofi chill rnb"],
+      "retro city pop": ["kpop dance", "dream pop"],
+      "healing piano": ["piano ballad", "ambient chill"]
+    };
+
+    const weatherEl = document.getElementById("weather");
+    const emotionEl = document.getElementById("emotion");
+    const noteEl = document.getElementById("note");
+    const statusEl = document.getElementById("status");
+    const resultsEl = document.getElementById("results");
+
+    document.getElementById("searchBtn").addEventListener("click", () => {
+      const weather = weatherEl.value.trim();
+      const emotion = emotionEl.value.trim();
+      const note = noteEl.value.trim();
+
+      if (!weather || !emotion) {
+        setStatus("날씨와 감정은 필수 입력입니다.");
+        return;
+      }
+
+      const weatherGenre = pickGenre(weather, weatherGenreMap, "acoustic pop");
+      const emotionGenre = pickGenre(emotion, emotionGenreMap, "ambient chill");
+      const songs = pickSongs(weatherGenre, emotionGenre, note);
+
+      resultsEl.innerHTML = "";
+      renderSongs(songs, weatherGenre + " + " + emotionGenre);
+      rememberRecentSongs(songs);
+      setStatus("완료: 비슷한 분위기의 10곡을 새롭게 추천했습니다.");
+    });
+
+    function pickGenre(text, map, fallback) {
+      const found = map.find(item => item.re.test(text));
+      return found ? found.genre : fallback;
+    }
+
+    function pickSongs(weatherGenre, emotionGenre, note) {
+      const weightedGenres = buildTargetGenres(weatherGenre, emotionGenre, note);
+      const scoredPool = buildScoredSongPool(weightedGenres);
+      const recentSet = new Set(loadRecentSongKeys());
+      return pickWithRecentAvoidance(scoredPool, recentSet, 10);
+    }
+
+    function buildTargetGenres(weatherGenre, emotionGenre, note) {
+      const base = [
+        { genre: emotionGenre, weight: 3.3 },
+        { genre: weatherGenre, weight: 2.6 }
+      ];
+
+      for (const src of [emotionGenre, weatherGenre]) {
+        const neighbors = genreNeighbors[src] || [];
+        for (const near of neighbors) {
+          base.push({ genre: near, weight: 1.5 });
+        }
+      }
+
+      if (note && /focus|study|work|job|coding|집중|공부|업무|일|코딩/i.test(note)) {
+        base.push({ genre: "lofi beats", weight: 3.6 });
+        base.push({ genre: "ambient chill", weight: 2.3 });
+      }
+
+      return base;
+    }
+
+    function buildScoredSongPool(weightedGenres) {
+      const scoreMap = new Map();
+
+      for (const item of weightedGenres) {
+        const songs = genreSongs[item.genre] || [];
+        for (const song of songs) {
+          const key = songKey(song);
+          const current = scoreMap.get(key) || { song, score: 0 };
+          current.score += item.weight + Math.random() * 0.9;
+          scoreMap.set(key, current);
+        }
+      }
+
+      const pool = Array.from(scoreMap.values());
+      pool.sort((a, b) => (b.score + Math.random() * 0.8) - (a.score + Math.random() * 0.8));
+      return pool;
+    }
+
+    function pickWithRecentAvoidance(scoredPool, recentSet, limit) {
+      const selected = [];
+      const seen = new Set();
+
+      for (const item of scoredPool) {
+        if (selected.length >= limit) break;
+        const key = songKey(item.song);
+        if (seen.has(key) || recentSet.has(key)) continue;
+        selected.push(item.song);
+        seen.add(key);
+      }
+
+      for (const item of scoredPool) {
+        if (selected.length >= limit) break;
+        const key = songKey(item.song);
+        if (seen.has(key)) continue;
+        selected.push(item.song);
+        seen.add(key);
+      }
+
+      return selected;
+    }
+
+    function songKey(song) {
+      return song[0] + " - " + song[1];
+    }
+
+    function loadRecentSongKeys() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function rememberRecentSongs(songs) {
+      const previous = loadRecentSongKeys();
+      const merged = [...previous, ...songs.map(song => songKey(song))];
+      localStorage.setItem(RECENT_KEY, JSON.stringify(merged.slice(-30)));
+    }
+
+    function renderSongs(songs, genreTag) {
+      const frag = document.createDocumentFragment();
+      for (const [artist, title] of songs) {
+        const q = encodeURIComponent(artist + " " + title + " official audio");
+        const url = "https://www.youtube.com/results?search_query=" + q;
+        const card = document.createElement("article");
+        card.className = "song";
+        card.innerHTML = `
+          <strong>${escapeHtml(title)}</strong>
+          <div class="meta">${escapeHtml(artist)}</div>
+          <span class="tag">${escapeHtml(genreTag)}</span>
+          <a href="${url}" target="_blank" rel="noopener noreferrer">유튜브에서 찾기</a>
+        `;
+        frag.appendChild(card);
+      }
+      resultsEl.appendChild(frag);
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll("\"", "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+  </script>
+</body>
+</html>

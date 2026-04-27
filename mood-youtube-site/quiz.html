@@ -1,0 +1,843 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>장르별 노래 맞추기</title>
+  <style>
+    :root {
+      --bg-a: #fff7ed;
+      --bg-b: #eff6ff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --card: #ffffff;
+      --accent: #ea580c;
+      --good: #15803d;
+      --bad: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", "Segoe UI", Tahoma, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 12%, #ffe9d5 0%, transparent 38%),
+        radial-gradient(circle at 88% 18%, #dbeafe 0%, transparent 45%),
+        linear-gradient(135deg, var(--bg-a), var(--bg-b));
+      min-height: 100vh;
+    }
+    .wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 16px 52px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.2;
+    }
+    .sub {
+      margin-top: 8px;
+      color: var(--muted);
+    }
+    .panel {
+      margin-top: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .chip {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #111827;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font: inherit;
+      cursor: pointer;
+    }
+    .chip.active {
+      border-color: var(--accent);
+      background: #ffedd5;
+      color: #9a3412;
+      font-weight: 700;
+    }
+    .row {
+      margin-top: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #fff;
+      background: var(--accent);
+      font: inherit;
+      cursor: pointer;
+    }
+    .btn.secondary {
+      background: #334155;
+    }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .question {
+      margin-top: 18px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .audio-wrap {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #111827;
+      color: #f9fafb;
+      padding: 14px;
+    }
+    .audio-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .audio-help {
+      color: #d1d5db;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+    .audio-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .audio-btn {
+      border: 1px solid #374151;
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #1f2937;
+      color: #f9fafb;
+      font: inherit;
+      cursor: pointer;
+    }
+    .audio-btn:hover {
+      background: #374151;
+    }
+    .audio-player {
+      width: 100%;
+      margin-top: 12px;
+    }
+    .choices {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .choice {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+    .choice.correct {
+      border-color: var(--good);
+      background: #dcfce7;
+    }
+    .choice.wrong {
+      border-color: var(--bad);
+      background: #fee2e2;
+    }
+    .status {
+      margin-top: 14px;
+      min-height: 24px;
+      font-size: 15px;
+      color: var(--muted);
+    }
+    .score {
+      font-weight: 700;
+    }
+    .bonus-box {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff7ed;
+      padding: 12px;
+      display: none;
+    }
+    .bonus-title {
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .bonus-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    a.back {
+      color: #1d4ed8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>장르별 노래 맞추기</h1>
+    <p class="sub">카테고리를 고르고, 노래를 들은 뒤 곡 제목을 맞혀보세요.</p>
+
+    <section class="panel">
+      <div><strong>카테고리 선택</strong></div>
+      <div class="chips" id="categoryChips"></div>
+
+      <div class="row">
+        <label for="questionCountSelect">문제 수</label>
+        <select id="questionCountSelect" class="audio-btn" style="background:#fff;color:#111827;">
+          <option value="10">10문제</option>
+          <option value="20">20문제</option>
+          <option value="30">30문제</option>
+        </select>
+        <button class="btn" id="startBtn">퀴즈 시작</button>
+        <button class="btn secondary" id="nextBtn" disabled>다음 문제</button>
+        <span class="score" id="scoreLabel">점수: 0 / 0</span>
+      </div>
+
+      <div class="question" id="question">퀴즈를 시작하면 문제가 나옵니다.</div>
+      <div class="audio-wrap">
+        <div class="audio-title">오디오 재생</div>
+        <div class="audio-help">아래 버튼으로 미리듣기를 재생하세요.</div>
+        <div class="audio-controls">
+          <button class="audio-btn" id="playBtn" type="button">재생</button>
+          <button class="audio-btn" id="pauseBtn" type="button">일시정지</button>
+          <button class="audio-btn" id="restartBtn" type="button">처음부터</button>
+        </div>
+        <audio id="audioPlayer" class="audio-player" controls preload="none"></audio>
+      </div>
+      <div class="choices" id="choices"></div>
+      <div class="status" id="status"></div>
+      <div class="bonus-box" id="bonusBox">
+        <div class="bonus-title">오답이 2문제 이하입니다. 3초만 듣고 맞추기 챌린지를 하시겠어요?</div>
+        <div class="bonus-actions">
+          <button class="btn" id="bonusYesBtn" type="button">예, 도전할래요</button>
+          <button class="btn secondary" id="bonusNoBtn" type="button">아니요, 처음 화면으로</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <a class="back" href="./index.html">이전 페이지로 돌아가기</a>
+    </section>
+  </main>
+
+  <script>
+    const categories = {
+      kpop: [
+        { artist: "BTS", titles: ["Dynamite", "Butter", "Boy With Luv", "Spring Day", "DNA"] },
+        { artist: "BLACKPINK", titles: ["DDU-DU DDU-DU", "Kill This Love", "How You Like That", "Pink Venom", "Lovesick Girls"] },
+        { artist: "TWICE", titles: ["FANCY", "Feel Special", "TT", "What is Love?", "Dance The Night Away"] },
+        { artist: "EXO", titles: ["Growl", "Love Shot", "Tempo", "Monster", "Call Me Baby"] },
+        { artist: "Red Velvet", titles: ["Psycho", "Red Flavor", "Bad Boy", "Feel My Rhythm", "Russian Roulette"] },
+        { artist: "SEVENTEEN", titles: ["Super", "HOT", "Very Nice", "Rock with you", "Left and Right"] },
+        { artist: "Stray Kids", titles: ["MANIAC", "God's Menu", "S-Class", "Thunderous", "Back Door"] },
+        { artist: "NCT 127", titles: ["Kick It", "Cherry Bomb", "Fact Check", "2 Baddies", "Favorite"] },
+        { artist: "NCT DREAM", titles: ["Candy", "Hot Sauce", "Beatbox", "Glitch Mode", "Hello Future"] },
+        { artist: "aespa", titles: ["Next Level", "Savage", "Spicy", "Drama", "Black Mamba"] },
+        { artist: "IVE", titles: ["LOVE DIVE", "After LIKE", "I AM", "ELEVEN", "Baddie"] },
+        { artist: "NewJeans", titles: ["Hype Boy", "Ditto", "Super Shy", "OMG", "Attention"] },
+        { artist: "LE SSERAFIM", titles: ["ANTIFRAGILE", "FEARLESS", "UNFORGIVEN", "Perfect Night", "EASY"] },
+        { artist: "ITZY", titles: ["WANNABE", "DALLA DALLA", "SNEAKERS", "LOCO", "CAKE"] },
+        { artist: "(G)I-DLE", titles: ["Queencard", "TOMBOY", "Nxde", "LATATA", "Super Lady"] },
+        { artist: "SHINee", titles: ["Ring Ding Dong", "View", "Don't Call Me", "Sherlock", "Replay"] },
+        { artist: "BIGBANG", titles: ["BANG BANG BANG", "FANTASTIC BABY", "Haru Haru", "LOSER", "BLUE"] },
+        { artist: "Girls' Generation", titles: ["Gee", "Into the New World", "I Got A Boy", "Lion Heart", "Holiday"] },
+        { artist: "Super Junior", titles: ["Sorry, Sorry", "Mr. Simple", "Bonamana", "Devil", "MAMACITA"] },
+        { artist: "ATEEZ", titles: ["BOUNCY", "WONDERLAND", "Guerrilla", "Deja Vu", "Wave"] },
+        { artist: "MONSTA X", titles: ["Shoot Out", "Love Killa", "DRAMARAMA", "Beautiful", "Rush Hour"] },
+        { artist: "ENHYPEN", titles: ["Bite Me", "Drunk-Dazed", "Polaroid Love", "Given-Taken", "Sweet Venom"] },
+        { artist: "TXT", titles: ["Sugar Rush Ride", "0X1=LOVESONG", "Blue Hour", "CROWN", "Deja Vu"] },
+        { artist: "Wanna One", titles: ["Energetic", "Beautiful", "Spring Breeze", "Boomerang", "Light"] },
+        { artist: "KARA", titles: ["STEP", "Mister", "Lupin", "Pandora", "When I Move"] },
+        { artist: "2NE1", titles: ["I Am The Best", "Fire", "Lonely", "Come Back Home", "Ugly"] },
+        { artist: "IU", titles: ["Blueming", "Love poem", "LILAC", "Celebrity", "Palette"] },
+        { artist: "Taeyeon", titles: ["INVU", "Fine", "Four Seasons", "Weekend", "I"] },
+        { artist: "ZICO", titles: ["Any Song", "New Thing", "Artist", "Okey Dokey", "SPOT!"] },
+        { artist: "AKMU", titles: ["How can I love the heartbreak", "200%", "Give Love", "Dinosaur", "Love Lee"] }
+      ],
+      jpop: [
+        { artist: "YOASOBI", titles: ["Idol", "Yoru ni Kakeru", "Gunjo", "Kaibutsu", "Tabun"] },
+        { artist: "Kenshi Yonezu", titles: ["Lemon", "Peace Sign", "KICK BACK", "Flamingo", "Uma to Shika"] },
+        { artist: "Official HIGE DANdism", titles: ["Pretender", "I LOVE...", "Subtitle", "Cry Baby", "Mixed Nuts"] },
+        { artist: "Ado", titles: ["Usseewa", "New Genesis", "Show", "Odo", "Gira Gira"] },
+        { artist: "LiSA", titles: ["Gurenge", "Homura", "Catch the Moment", "Shirushi", "Rising Hope"] },
+        { artist: "RADWIMPS", titles: ["Nandemonaiya", "Zenzenzense", "Sparkle", "Is There Still Anything That Love Can Do?", "DADA"] },
+        { artist: "King Gnu", titles: ["Hakujitsu", "Ichizu", "Teenager Forever", "Boy", "Specialz"] },
+        { artist: "Aimer", titles: ["Zankyosanka", "Brave Shine", "Ref:rain", "Kataomoi", "SPARK-AGAIN"] },
+        { artist: "Aimyon", titles: ["Marigold", "Ai wo Tsutaetaidatoka", "Hadaka no Kokoro", "Haru no Hi", "Kimi wa Rock wo Kikanai"] },
+        { artist: "Mrs. GREEN APPLE", titles: ["Dance Hall", "Ao to Natsu", "Soranji", "Inferno", "Que Sera Sera"] },
+        { artist: "Vaundy", titles: ["Kaiju no Hanauta", "Odoriko", "Tokimeki", "CHAINSAW BLOOD", "Mabataki"] },
+        { artist: "back number", titles: ["Christmas Song", "Takane no Hanako-san", "Happy End", "Suiheisen", "Mabataki"] },
+        { artist: "SEKAI NO OWARI", titles: ["RPG", "Habit", "Dragon Night", "Starlight Parade", "Rain"] },
+        { artist: "BUMP OF CHICKEN", titles: ["Tentai Kansoku", "ray", "Hello, world!", "Souvenir", "Acacia"] },
+        { artist: "ONE OK ROCK", titles: ["The Beginning", "Wherever You Are", "Clock Strikes", "Stand Out Fit In", "Renegades"] },
+        { artist: "SPITZ", titles: ["Robinson", "Cherry", "Sora mo Toberu Hazu", "Yasashii Ano Ko", "Mihamashii Sekai"] },
+        { artist: "L'Arc-en-Ciel", titles: ["READY STEADY GO", "HONEY", "Driver's High", "Niji", "Blurry Eyes"] },
+        { artist: "Hikaru Utada", titles: ["First Love", "Automatic", "Traveling", "One Last Kiss", "Hikari"] },
+        { artist: "Namie Amuro", titles: ["CAN YOU CELEBRATE?", "Hero", "Hope", "Baby Don't Cry", "Body Feels EXIT"] },
+        { artist: "Ayumi Hamasaki", titles: ["M", "SEASONS", "evolution", "Voyage", "BLUE BIRD"] },
+        { artist: "Perfume", titles: ["Polyrhythm", "Pick Me Up", "Flash", "Tokyo Girl", "Magic of Love"] },
+        { artist: "Arashi", titles: ["Love so sweet", "A.RA.SHI", "Happiness", "One Love", "Monster"] },
+        { artist: "SMAP", titles: ["Sekai ni Hitotsu Dake no Hana", "Yozora no Mukou", "SHAKE", "Lion Heart", "Aoi Inazuma"] },
+        { artist: "YUI", titles: ["CHE.R.RY", "again", "Rolling star", "GLORIA", "Good-bye days"] },
+        { artist: "iri", titles: ["Sparkle", "Wonderland", "Only One", "Peak", "rhythm"] },
+        { artist: "Eve", titles: ["Kaikai Kitan", "Dramaturgy", "Yoruwa Honoka", "Fight Song", "Bokurano"] },
+        { artist: "milet", titles: ["inside you", "us", "Who I Am", "Ordinary days", "Anytime Anywhere"] },
+        { artist: "DAOKO", titles: ["Uchiage Hanabi", "Yume Miteta no Atashi", "BANG!", "ShibuyaK", "Step Up LOVE"] },
+        { artist: "Yorushika", titles: ["Haru Dorobou", "Tada Kimi ni Hare", "Dakara Boku wa Ongaku wo Yameta", "Matasaburo", "Shisouhan"] },
+        { artist: "sakanaction", titles: ["Shin Takarajima", "Wasurerarenaino", "Aoi", "Music", "Identity"] }
+      ],
+      pop: [
+        { artist: "Taylor Swift", titles: ["Cruel Summer", "Anti-Hero", "Blank Space", "Shake It Off", "Love Story"] },
+        { artist: "Ed Sheeran", titles: ["Shape of You", "Perfect", "Bad Habits", "Thinking Out Loud", "Photograph"] },
+        { artist: "Dua Lipa", titles: ["Levitating", "Don't Start Now", "New Rules", "Physical", "Houdini"] },
+        { artist: "The Weeknd", titles: ["Blinding Lights", "Save Your Tears", "Starboy", "Can't Feel My Face", "Die For You"] },
+        { artist: "Ariana Grande", titles: ["7 rings", "thank u, next", "positions", "Into You", "No Tears Left to Cry"] },
+        { artist: "Justin Bieber", titles: ["Sorry", "Peaches", "Love Yourself", "What Do You Mean?", "Ghost"] },
+        { artist: "Bruno Mars", titles: ["Uptown Funk", "Just the Way You Are", "Locked Out of Heaven", "24K Magic", "Treasure"] },
+        { artist: "Lady Gaga", titles: ["Bad Romance", "Poker Face", "Shallow", "Born This Way", "Rain On Me"] },
+        { artist: "Olivia Rodrigo", titles: ["drivers license", "good 4 u", "vampire", "deja vu", "traitor"] },
+        { artist: "Billie Eilish", titles: ["bad guy", "Happier Than Ever", "everything i wanted", "bury a friend", "ocean eyes"] },
+        { artist: "Katy Perry", titles: ["Roar", "Firework", "Dark Horse", "Teenage Dream", "California Gurls"] },
+        { artist: "Maroon 5", titles: ["Sugar", "Memories", "Girls Like You", "Moves Like Jagger", "Payphone"] },
+        { artist: "Imagine Dragons", titles: ["Believer", "Thunder", "Radioactive", "Demons", "Enemy"] },
+        { artist: "Coldplay", titles: ["Viva La Vida", "Paradise", "Yellow", "A Sky Full of Stars", "Adventure of a Lifetime"] },
+        { artist: "Adele", titles: ["Hello", "Rolling in the Deep", "Someone Like You", "Easy On Me", "Set Fire to the Rain"] },
+        { artist: "Sam Smith", titles: ["Stay With Me", "I'm Not The Only One", "Too Good At Goodbyes", "Unholy", "Dancing With A Stranger"] },
+        { artist: "Charlie Puth", titles: ["Attention", "We Don't Talk Anymore", "Light Switch", "See You Again", "Left and Right"] },
+        { artist: "Shawn Mendes", titles: ["Señorita", "Stitches", "Treat You Better", "There's Nothing Holdin' Me Back", "Mercy"] },
+        { artist: "Camila Cabello", titles: ["Havana", "Never Be the Same", "Bam Bam", "Liar", "My Oh My"] },
+        { artist: "Rihanna", titles: ["Diamonds", "We Found Love", "Umbrella", "Only Girl", "Stay"] },
+        { artist: "Sia", titles: ["Chandelier", "Cheap Thrills", "Unstoppable", "Elastic Heart", "Snowman"] },
+        { artist: "Post Malone", titles: ["Circles", "Sunflower", "Rockstar", "Congratulations", "I Like You"] },
+        { artist: "Drake", titles: ["God's Plan", "One Dance", "In My Feelings", "Hotline Bling", "Passionfruit"] },
+        { artist: "Eminem", titles: ["Lose Yourself", "Without Me", "Not Afraid", "Love The Way You Lie", "Rap God"] },
+        { artist: "Beyonce", titles: ["Halo", "Single Ladies", "Crazy In Love", "Irreplaceable", "Break My Soul"] },
+        { artist: "Justin Timberlake", titles: ["CAN'T STOP THE FEELING!", "Mirrors", "SexyBack", "Cry Me a River", "Rock Your Body"] },
+        { artist: "OneRepublic", titles: ["Counting Stars", "Apologize", "I Ain't Worried", "Secrets", "Rescue Me"] },
+        { artist: "Linkin Park", titles: ["Numb", "In the End", "What I've Done", "Faint", "New Divide"] },
+        { artist: "Alan Walker", titles: ["Faded", "Alone", "Sing Me To Sleep", "On My Way", "Darkside"] },
+        { artist: "Ava Max", titles: ["Sweet but Psycho", "Kings & Queens", "So Am I", "My Head & My Heart", "Maybe You're The Problem"] }
+      ]
+    };
+
+    const labels = { kpop: "KPOP", jpop: "JPOP", pop: "POP" };
+
+    const categoryChipsEl = document.getElementById("categoryChips");
+    const startBtn = document.getElementById("startBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const questionCountSelectEl = document.getElementById("questionCountSelect");
+    const questionEl = document.getElementById("question");
+    const audioPlayerEl = document.getElementById("audioPlayer");
+    const playBtn = document.getElementById("playBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const choicesEl = document.getElementById("choices");
+    const statusEl = document.getElementById("status");
+    const scoreLabelEl = document.getElementById("scoreLabel");
+    const bonusBoxEl = document.getElementById("bonusBox");
+    const bonusYesBtn = document.getElementById("bonusYesBtn");
+    const bonusNoBtn = document.getElementById("bonusNoBtn");
+
+    let selectedCategory = "kpop";
+    let currentQuestion = null;
+    let answered = false;
+    let score = 0;
+    let total = 0;
+    let targetQuestionCount = 10;
+    let askedCount = 0;
+    let currentPreviewUrl = "";
+    let previewLoadedForTrackKey = "";
+    let inBonusRound = false;
+    let snippetPlayedThisQuestion = false;
+    let snippetTimerId = null;
+    let usedAnswerKeys = {
+      kpop: new Set(),
+      jpop: new Set(),
+      pop: new Set()
+    };
+    let usedArtistsByCategory = {
+      kpop: new Set(),
+      jpop: new Set(),
+      pop: new Set()
+    };
+    let artistOrderByCategory = {
+      kpop: [],
+      jpop: [],
+      pop: []
+    };
+    let artistPointerByCategory = {
+      kpop: 0,
+      jpop: 0,
+      pop: 0
+    };
+    let lastArtistByCategory = {
+      kpop: "",
+      jpop: "",
+      pop: ""
+    };
+
+    renderChips();
+    resetArtistRotationAll();
+    hideBonusPrompt();
+
+    playBtn.addEventListener("click", () => {
+      if (!currentQuestion) {
+        setStatus("먼저 퀴즈를 시작해 주세요.");
+        return;
+      }
+      if (inBonusRound) {
+        playThreeSecondSnippet(false);
+        return;
+      }
+      playCurrentPreview();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      audioPlayerEl.pause();
+      setStatus("일시정지되었습니다.");
+    });
+
+    restartBtn.addEventListener("click", () => {
+      if (!currentQuestion) {
+        setStatus("먼저 퀴즈를 시작해 주세요.");
+        return;
+      }
+      if (inBonusRound) {
+        setStatus("3초 챌린지에서는 다시 듣기가 불가능합니다.");
+        return;
+      }
+      if (!currentPreviewUrl) {
+        playCurrentPreview();
+        return;
+      }
+      audioPlayerEl.currentTime = 0;
+      audioPlayerEl.play().then(() => {
+        setStatus("처음부터 다시 재생합니다.");
+      }).catch(() => {
+        setStatus("재생에 실패했습니다. 재생 버튼을 다시 눌러주세요.");
+      });
+    });
+
+    startBtn.addEventListener("click", () => {
+      inBonusRound = false;
+      score = 0;
+      total = 0;
+      askedCount = 0;
+      targetQuestionCount = Number(questionCountSelectEl.value) || 10;
+      const maxQuestions = categories[selectedCategory].length;
+      if (targetQuestionCount > maxQuestions) {
+        targetQuestionCount = maxQuestions;
+      }
+      usedAnswerKeys = {
+        kpop: new Set(),
+        jpop: new Set(),
+        pop: new Set()
+      };
+      usedArtistsByCategory = {
+        kpop: new Set(),
+        jpop: new Set(),
+        pop: new Set()
+      };
+      clearSnippetTimer();
+      resetArtistRotationAll();
+      hideBonusPrompt();
+      setAudioControlMode(false);
+      updateScore();
+      nextBtn.disabled = true;
+      if ((Number(questionCountSelectEl.value) || 10) > maxQuestions) {
+        setStatus("선택한 문제 수가 카테고리 가수 수보다 많아 " + maxQuestions + "문제로 시작합니다.");
+      } else {
+        setStatus("퀴즈를 시작했습니다. 정답을 골라보세요.");
+      }
+      generateQuestion();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      hideBonusPrompt();
+      if (!answered) {
+        setStatus("현재 문제의 정답을 먼저 선택해 주세요.");
+        return;
+      }
+      if (askedCount >= targetQuestionCount) {
+        finishQuiz();
+        return;
+      }
+      generateQuestion();
+    });
+
+    function renderChips() {
+      categoryChipsEl.innerHTML = "";
+      for (const key of Object.keys(categories)) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "chip" + (key === selectedCategory ? " active" : "");
+        chip.textContent = labels[key];
+        chip.addEventListener("click", () => {
+          selectedCategory = key;
+          renderChips();
+          setStatus(labels[key] + " 카테고리를 선택했습니다.");
+        });
+        categoryChipsEl.appendChild(chip);
+      }
+    }
+
+    function generateQuestion() {
+      const artistBuckets = categories[selectedCategory];
+      if (!artistBuckets || artistBuckets.length === 0) {
+        setStatus("문제를 만들기 위한 곡 수가 부족합니다.");
+        return;
+      }
+
+      const usedSet = usedAnswerKeys[selectedCategory];
+      const usedArtists = usedArtistsByCategory[selectedCategory];
+      const availableArtistBuckets = artistBuckets.filter(bucket => !usedArtists.has(bucket.artist));
+      if (availableArtistBuckets.length === 0) {
+        finishQuiz();
+        return;
+      }
+
+      answered = false;
+      const pickedBucket = availableArtistBuckets[Math.floor(Math.random() * availableArtistBuckets.length)];
+      const artist = pickedBucket.artist;
+      const answerTitle = pickedBucket.titles[Math.floor(Math.random() * pickedBucket.titles.length)];
+      lastArtistByCategory[selectedCategory] = artist;
+      usedArtists.add(artist);
+      usedSet.add(songKey(artist, answerTitle));
+      currentPreviewUrl = "";
+      previewLoadedForTrackKey = "";
+      snippetPlayedThisQuestion = false;
+      clearSnippetTimer();
+      audioPlayerEl.pause();
+      audioPlayerEl.removeAttribute("src");
+      audioPlayerEl.load();
+
+      const sameArtist = pickedBucket;
+      if (!sameArtist || sameArtist.titles.length < 4) {
+        setStatus("같은 가수의 선지 구성을 만들 수 없습니다.");
+        return;
+      }
+
+      const otherTitles = shuffle(
+        sameArtist.titles.filter(title => title !== answerTitle)
+      ).slice(0, 3);
+
+      const options = shuffle([answerTitle, ...otherTitles]);
+      currentQuestion = { artist, answerTitle, options };
+      askedCount += 1;
+      nextBtn.disabled = true;
+
+      questionEl.textContent = askedCount + " / " + targetQuestionCount + " 문제: 재생된 노래의 제목은 무엇일까요?";
+      choicesEl.innerHTML = "";
+      for (const title of options) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "choice";
+        btn.textContent = title;
+        btn.addEventListener("click", () => onAnswer(btn, title));
+        choicesEl.appendChild(btn);
+      }
+      setStatus("재생 버튼을 눌러 노래를 들은 뒤 정답을 선택하세요.");
+      if (inBonusRound) {
+        playBtn.disabled = false;
+        setStatus("3초 챌린지: 자동으로 3초만 재생됩니다. 잘 듣고 맞혀보세요.");
+        playThreeSecondSnippet(true);
+      }
+    }
+
+    async function playCurrentPreview() {
+      if (!currentQuestion) return;
+      const loaded = await ensureCurrentPreviewLoaded();
+      if (!loaded) return;
+      audioPlayerEl.play().then(() => {
+        setStatus("재생 중입니다. 제목을 선택해 보세요.");
+      }).catch(() => {
+        setStatus("재생에 실패했습니다. 브라우저 음소거 해제 후 다시 눌러주세요.");
+      });
+    }
+
+    async function ensureCurrentPreviewLoaded() {
+      const trackKey = currentQuestion.artist + " - " + currentQuestion.answerTitle;
+      if (!currentPreviewUrl || previewLoadedForTrackKey !== trackKey) {
+        setStatus("노래를 찾는 중입니다...");
+        const previewUrl = await findPreviewUrl(currentQuestion.artist, currentQuestion.answerTitle);
+        if (!previewUrl) {
+          setStatus("미리듣기를 찾지 못했습니다. 다음 문제를 눌러주세요.");
+          return false;
+        }
+        currentPreviewUrl = previewUrl;
+        previewLoadedForTrackKey = trackKey;
+        audioPlayerEl.src = previewUrl;
+      }
+      return true;
+    }
+
+    async function playThreeSecondSnippet(force) {
+      if (!currentQuestion) return;
+      if (snippetPlayedThisQuestion && !force) {
+        setStatus("3초 챌린지에서는 한 문제당 한 번만 재생됩니다.");
+        return;
+      }
+      const loaded = await ensureCurrentPreviewLoaded();
+      if (!loaded) return;
+
+      try {
+        clearSnippetTimer();
+        audioPlayerEl.currentTime = 0;
+        await audioPlayerEl.play();
+        snippetPlayedThisQuestion = true;
+        playBtn.disabled = true;
+        snippetTimerId = setTimeout(() => {
+          audioPlayerEl.pause();
+          setStatus("3초 재생이 끝났습니다. 제목을 선택하세요.");
+          snippetTimerId = null;
+        }, 3000);
+      } catch (error) {
+        setStatus("자동 재생이 막혔습니다. 재생 버튼을 눌러 3초 듣기를 시작하세요.");
+      }
+    }
+
+    async function findPreviewUrl(artist, title) {
+      try {
+        const term = encodeURIComponent(artist + " " + title);
+        const url = "https://itunes.apple.com/search?term=" + term + "&media=music&entity=song&limit=15";
+        const response = await fetch(url);
+        if (!response.ok) return "";
+        const data = await response.json();
+        if (!data || !Array.isArray(data.results)) return "";
+
+        const norm = text => String(text || "").toLowerCase().replace(/[^a-z0-9가-힣]/g, "");
+        const targetArtist = norm(artist);
+        const targetTitle = norm(title);
+
+        const exact = data.results.find(item =>
+          norm(item.artistName).includes(targetArtist) &&
+          norm(item.trackName).includes(targetTitle) &&
+          item.previewUrl
+        );
+        if (exact) return exact.previewUrl;
+
+        const fallback = data.results.find(item => item.previewUrl);
+        return fallback ? fallback.previewUrl : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function onAnswer(buttonEl, pickedTitle) {
+      if (answered || !currentQuestion) return;
+      answered = true;
+      total += 1;
+
+      const isCorrect = pickedTitle === currentQuestion.answerTitle;
+      if (isCorrect) score += 1;
+      updateScore();
+
+      const choiceButtons = Array.from(choicesEl.querySelectorAll(".choice"));
+      for (const btn of choiceButtons) {
+        btn.disabled = true;
+        if (btn.textContent === currentQuestion.answerTitle) {
+          btn.classList.add("correct");
+        } else if (btn === buttonEl && !isCorrect) {
+          btn.classList.add("wrong");
+        }
+      }
+
+      if (isCorrect) {
+        if (askedCount >= targetQuestionCount) {
+          finishQuiz();
+        } else {
+          nextBtn.disabled = false;
+          setStatus("정답입니다! 다음 문제를 눌러 진행하세요.");
+        }
+      } else {
+        if (askedCount >= targetQuestionCount) {
+          finishQuiz();
+        } else {
+          nextBtn.disabled = false;
+          setStatus("오답입니다. 정답: " + currentQuestion.answerTitle + " (" + currentQuestion.artist + ") | 다음 문제를 눌러 진행하세요.");
+        }
+      }
+    }
+
+    function updateScore() {
+      scoreLabelEl.textContent = "점수: " + score + " / " + total;
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function shuffle(arr) {
+      const clone = [...arr];
+      for (let i = clone.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = clone[i];
+        clone[i] = clone[j];
+        clone[j] = temp;
+      }
+      return clone;
+    }
+
+    function flattenTracks(artistBuckets) {
+      const tracks = [];
+      for (const bucket of artistBuckets) {
+        for (const title of bucket.titles) {
+          tracks.push({ artist: bucket.artist, title });
+        }
+      }
+      return tracks;
+    }
+
+    function songKey(artist, title) {
+      return artist + " - " + title;
+    }
+
+    function finishQuiz() {
+      clearSnippetTimer();
+      nextBtn.disabled = true;
+      const wrongCount = total - score;
+      if (!inBonusRound && wrongCount <= 2 && total > 0) {
+        showBonusPrompt();
+        setStatus("퀴즈 종료! 최종 점수: " + score + " / " + targetQuestionCount + ". 3초 챌린지 도전을 선택하세요.");
+        return;
+      }
+      if (inBonusRound) {
+        setStatus("3초 챌린지 종료! 최종 점수: " + score + " / " + targetQuestionCount + ". 다시 하려면 퀴즈 시작을 누르세요.");
+        return;
+      }
+      setStatus("퀴즈 종료! 최종 점수: " + score + " / " + targetQuestionCount + ". 다시 하려면 퀴즈 시작을 누르세요.");
+    }
+
+    function resetArtistRotationAll() {
+      for (const category of Object.keys(categories)) {
+        resetArtistRotation(category);
+      }
+    }
+
+    function resetArtistRotation(category) {
+      const artistNames = categories[category].map(bucket => bucket.artist);
+      artistOrderByCategory[category] = shuffle(artistNames);
+      artistPointerByCategory[category] = 0;
+      lastArtistByCategory[category] = "";
+    }
+
+    function pickNextArtist(category, candidateArtists) {
+      if (!candidateArtists.length) return "";
+      const candidateSet = new Set(candidateArtists);
+      let order = artistOrderByCategory[category];
+      if (!order || order.length === 0) {
+        resetArtistRotation(category);
+        order = artistOrderByCategory[category];
+      }
+
+      let pointer = artistPointerByCategory[category] || 0;
+      for (let i = 0; i < order.length; i += 1) {
+        const idx = (pointer + i) % order.length;
+        const artist = order[idx];
+        if (!candidateSet.has(artist)) continue;
+        if (artist === lastArtistByCategory[category] && candidateArtists.length > 1) continue;
+        artistPointerByCategory[category] = (idx + 1) % order.length;
+        return artist;
+      }
+
+      for (let i = 0; i < order.length; i += 1) {
+        const idx = (pointer + i) % order.length;
+        const artist = order[idx];
+        if (!candidateSet.has(artist)) continue;
+        artistPointerByCategory[category] = (idx + 1) % order.length;
+        return artist;
+      }
+
+      return candidateArtists[0];
+    }
+
+    function showBonusPrompt() {
+      bonusBoxEl.style.display = "block";
+    }
+
+    function hideBonusPrompt() {
+      bonusBoxEl.style.display = "none";
+    }
+
+    function setAudioControlMode(bonusMode) {
+      if (bonusMode) {
+        playBtn.textContent = "3초 재생";
+        pauseBtn.disabled = true;
+        restartBtn.disabled = true;
+        audioPlayerEl.controls = false;
+      } else {
+        playBtn.textContent = "재생";
+        playBtn.disabled = false;
+        pauseBtn.disabled = false;
+        restartBtn.disabled = false;
+        audioPlayerEl.controls = true;
+      }
+    }
+
+    function clearSnippetTimer() {
+      if (snippetTimerId) {
+        clearTimeout(snippetTimerId);
+        snippetTimerId = null;
+      }
+    }
+
+    function startBonusRound() {
+      inBonusRound = true;
+      score = 0;
+      total = 0;
+      askedCount = 0;
+      targetQuestionCount = 3;
+      usedAnswerKeys = {
+        kpop: new Set(),
+        jpop: new Set(),
+        pop: new Set()
+      };
+      usedArtistsByCategory = {
+        kpop: new Set(),
+        jpop: new Set(),
+        pop: new Set()
+      };
+      currentQuestion = null;
+      currentPreviewUrl = "";
+      previewLoadedForTrackKey = "";
+      clearSnippetTimer();
+      audioPlayerEl.pause();
+      audioPlayerEl.removeAttribute("src");
+      audioPlayerEl.load();
+      hideBonusPrompt();
+      setAudioControlMode(true);
+      updateScore();
+      nextBtn.disabled = true;
+      setStatus("3초 챌린지 시작! 각 문제는 3초만 들려줍니다.");
+      generateQuestion();
+    }
+
+    bonusYesBtn.addEventListener("click", () => {
+      startBonusRound();
+    });
+
+    bonusNoBtn.addEventListener("click", () => {
+      window.location.href = "./index.html";
+    });
+  </script>
+</body>
+</html>
